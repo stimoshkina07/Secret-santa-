@@ -64,7 +64,7 @@ h1{font:400 clamp(44px,10vw,84px)/1 "Luckiest Guy",Impact,sans-serif;margin:0;le
 .warn b{color:var(--haz)}
 .door{margin:34px auto 0;max-width:460px;background:#203f3b;border:4px solid #0c1c1a;border-radius:18px;padding:26px 20px}
 .door h2{font:400 30px/1.1 "Luckiest Guy",Impact,sans-serif;margin:0 0 6px;color:var(--haz)}
-.door input{width:100%;font:16px Nunito,sans-serif;min-height:48px;padding:10px 14px;border-radius:12px;border:3px solid #0c1c1a;margin:12px 0}
+.names{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:14px}.names .btn{min-width:120px}.back{background:transparent;color:var(--ink);border-color:#ffffff55;box-shadow:none;font-size:15px;min-height:44px;margin-top:22px}
 .err{color:#ffb3a8;font-weight:900;min-height:1.5em;margin-top:12px}
 .confetti{position:fixed;top:-20px;width:10px;height:14px;z-index:9;pointer-events:none;animation:fallc linear forwards}
 @keyframes fallc{to{transform:translateY(110vh) rotate(720deg)}}
@@ -80,13 +80,12 @@ h1{font:400 clamp(44px,10vw,84px)/1 "Luckiest Guy",Impact,sans-serif;margin:0;le
     <p class="tag">Dr. Santa's Laboratory of Highly Questionable Gift Science</p>
   </div>
 
-  <!-- No key: locked door -->
-  <section id="locked" hidden>
+  <!-- Step 1: who are you -->
+  <section id="locked">
     <div class="door">
-      <h2>Authorised elves only</h2>
-      <p>This lab only opens with your personal secret link. Paste it (or the code at the end of it) here.</p>
-      <form id="codeForm"><input id="codeIn" autocomplete="off" placeholder="https://…#your-secret-code" aria-label="Your secret link or code"><button class="btn">Enter the lab</button></form>
-      <div class="err" id="codeErr" role="status"></div>
+      <h2>Who's entering the lab?</h2>
+      <p>Tap your own name. No peeking at anyone else's. The flasks are watching.</p>
+      <div class="names" id="names"></div>
     </div>
   </section>
 
@@ -105,14 +104,15 @@ h1{font:400 clamp(44px,10vw,84px)/1 "Luckiest Guy",Impact,sans-serif;margin:0;le
       <p class="quip" id="quip"></p>
       <button class="btn" id="toggle">Show name</button>
     </div>
+    <button class="btn back" id="back">← Not you? Back to the names</button>
   </section>
 
-  <p class="warn"><b>Lab safety rule #1:</b> results are top secret. Each person's link only opens their own flask, and nobody else's link (not even the organiser's) can see who you got. Side effects may include generosity, glitter and mild panic about budgets.</p>
+  <p class="warn"><b>Lab safety rule #1:</b> results are top secret. Only tap your own name, and don't tell anyone who you got. Side effects may include generosity, glitter and mild panic about budgets.</p>
 </main>
 
 <script>
 {
-const BOXES = ["XEA5KPD3TRejcwugaZt/07gP78j+XroznD0r1FldtGXkvoxRSA3UyQljO1by9BphsN6o37QqcY9/z7aTPqtwtVRC5g3pPvxI3/ueOw==","yJ70si5h2uhqJyy9lr3Q3qZUoj4kf26DQpA/tauaCUWXqD4za5z9ofrhcqWlHXHwoaAmDDj2V+TUfmPpUciBDZ1e2MGBHmgxIcjgyQ==","FYBKU4U/2hQfGRRy0Xd9zSmfF18CzWa0x4FYfiBcWzVFXpaaQCv4tQl8gNltmxR/PPc9vn6vM90kOfJ2jleoKhLp+iBX8LNxav0Zlw==","1TsTfg7/6Ia2BmeFfFSLyYH6DNDyIxSKG5cTpDQ8YKIA30WrzaSF/F0B/6a2LeRSAE7N7UrGrIV72Zv/g4K9FLDmXHs1X8ZRNr1h0Q==","Br2XNcnrCQZPV6WxnNtUXcwLcU2hOkg8KCcw7SesaHPAWiy1g5/NglvcnMATz7++UM9YiGozTtiEOJwL/imTkpGHDcCdTVK3hRx30g=="];
+const BOXES = {"Sophia":"NRgOCgpD","Stoyan":"LwAIHQo=","Ilina":"NQMRGwJM","Ivan":"NRgEFQhFHA==","Stefcho":"LxoAHQ=="};  // obfuscated so nobody spots a name by glancing at the code
 const NAMES = ["Sophia","Stoyan","Ilina","Ivan","Stefcho"];
 const $ = id => document.getElementById(id);
 const unb64 = s => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
@@ -188,21 +188,11 @@ const SHAPES = [
 
 let myKey = null, mine = null;
 
-async function tryKey(code) {
-  code = (code || "").trim();
-  if (code.includes("#")) code = code.split("#").pop();
-  let raw;
-  try { raw = unb64(code); } catch (_) { return null; }
-  if (raw.length !== 16) return null;
-  const key = await crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["decrypt"]);
-  for (const box of BOXES) {
-    try {
-      const bytes = unb64(box), iv = bytes.slice(0, 12), ct = bytes.slice(12);
-      const pt = JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ct)).trim());
-      if (NAMES.includes(pt.me) && NAMES.includes(pt.target)) return pt;
-    } catch (_) {}
-  }
-  return null;
+function decode(name) {
+  const raw = atob(BOXES[name] || ""), k = "flask-santa:" + name;
+  let out = "";
+  for (let i = 0; i < raw.length; i++) out += String.fromCharCode(raw.charCodeAt(i) ^ k.charCodeAt(i % k.length));
+  return NAMES.includes(out) ? out : null;
 }
 
 function buildShelf() {
@@ -251,7 +241,7 @@ async function pick(btn) {
     <path d="M150,8 L170,58 L224,24 L206,78 L282,70 L226,112 L290,150 L214,148 L234,196 L172,160 L150,198 L128,160 L66,196 L86,148 L10,150 L74,112 L18,70 L94,78 L76,24 L130,58 Z" fill="#ffd23f" stroke="#1b1400" stroke-width="6" stroke-linejoin="round"/>
     <text x="150" y="122" text-anchor="middle" font-family="'Luckiest Guy',Impact,sans-serif" font-size="58" fill="#e3262f" stroke="#1b1400" stroke-width="2.5">POOF!</text></svg>`;
   confetti();
-  try { localStorage.setItem("flaskSanta:" + myKey, String(btn.dataset.i)); } catch (_) {}
+  try { localStorage.setItem("flaskSanta2:" + myKey, String(btn.dataset.i)); } catch (_) {}
   await new Promise(r => setTimeout(r, 900));
   poof.hidden = true;
   $("lede").innerHTML = "";
@@ -269,43 +259,31 @@ function lookAt(x, y) {
   }
 }
 
-async function enter(code) {
-  const res = await tryKey(code);
-  if (!res) return false;
-  mine = res; myKey = (code.includes("#") ? code.split("#").pop() : code).trim();
-  if (location.hash.slice(1) !== myKey) history.replaceState(null, "", "#" + myKey);
-  $("locked").hidden = true; $("lab").hidden = false;
+function enter(name) {
+  const target = decode(name);
+  if (!target) return;
+  mine = { me: name, target }; myKey = name;
+  $("locked").hidden = true; $("lab").hidden = false; $("result").hidden = true;
   buildShelf();
-  let done = null; try { done = localStorage.getItem("flaskSanta:" + myKey); } catch (_) {}
+  let done = null; try { done = localStorage.getItem("flaskSanta2:" + myKey); } catch (_) {}
+  $("lede").innerHTML = "";
   if (done !== null) {
     document.querySelectorAll(".flask").forEach(b => { b.disabled = true; if (b.dataset.i !== done) b.classList.add("dud"); });
-    $("lede").innerHTML = "";
-    $("lede").append("Welcome back, ", Object.assign(document.createElement("b"), { textContent: mine.me }), ". Your experiment results are below.");
+    $("lede").append("Welcome back, ", Object.assign(document.createElement("b"), { textContent: name }), ". Your experiment results are below.");
     showResult(false);
   } else {
-    $("lede").innerHTML = "";
-    $("lede").append("Welcome to the lab, ", Object.assign(document.createElement("b"), { textContent: mine.me }),
+    $("lede").append("Welcome to the lab, ", Object.assign(document.createElement("b"), { textContent: name }),
       ". Inside one of these flasks is the person you're buying a present for. Pick one. Choose wisely. (They're all equally unstable.)");
   }
-  return true;
+  scrollTo({ top: 0 });
 }
 
+$("names").innerHTML = NAMES.map(n => `<button class="btn" data-n="${n}">${n}</button>`).join("");
+$("names").addEventListener("click", e => { const b = e.target.closest("button"); if (b) enter(b.dataset.n); });
+$("back").addEventListener("click", () => { $("lab").hidden = true; $("locked").hidden = false; mine = null; scrollTo({ top: 0 }); });
 $("flasks").addEventListener("click", e => { const b = e.target.closest(".flask"); if (b && !b.disabled) pick(b); });
 $("toggle").addEventListener("click", () => { const h = $("result").classList.toggle("hide"); $("toggle").textContent = h ? "Show name" : "Hide name"; });
 addEventListener("pointermove", e => lookAt(e.clientX, e.clientY), { passive: true });
-$("codeForm").addEventListener("submit", async e => {
-  e.preventDefault();
-  $("codeErr").textContent = "";
-  if (!(await enter($("codeIn").value))) $("codeErr").textContent = "That code melted in the beaker. Check your link and try again.";
-});
-
-(async () => {
-  const h = location.hash.slice(1);
-  if (!h || !(await enter(h))) {
-    $("locked").hidden = false;
-    if (h) $("codeErr").textContent = "That link didn't open any flask. Check you copied all of it.";
-  }
-})();
 }
 </script>
 </body>
