@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flask Santa</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Luckiest+Guy&family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+/* VOICE: silly, over-the-top mad-scientist lab run by Santa. Puns welcome.
+   IDEA: a shelf of bubbling, googly-eyed flasks in Dr. Santa's lab; one of them holds your person.
+   PICTURE: four characterful flasks on a wooden lab shelf, liquids bubbling, eyes following your cursor.
+   COLOUR and TYPE: dark tiled lab wall, slime green, Santa red, warm wood, hazard yellow; Luckiest Guy + Nunito.
+   LAYOUT: sign at top, shelf of flasks as the picture, reveal card below. */
+:root{--wall:#132826;--tile:#183330;--ink:#fffbea;--soft:#c9e4dc;--slime:#7cff4f;--red:#e3262f;--red2:#a3151c;--wood:#8a5a2b;--wood2:#5e3b18;--haz:#ffd23f}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;min-height:100vh;color:var(--ink);font:16px/1.55 Nunito,system-ui,sans-serif;overflow-x:clip;
+  background:
+   linear-gradient(transparent 0 0),
+   repeating-linear-gradient(0deg,#0c1c1a 0 2px,transparent 2px 56px),
+   repeating-linear-gradient(90deg,#0c1c1a 0 2px,transparent 2px 56px),
+   radial-gradient(90% 60% at 50% 0%,#1f4a44,var(--wall) 70%);}
+main{max-width:960px;margin:0 auto;padding:clamp(20px,4vw,44px) max(4vw,14px) 60px;text-align:center}
+.sign{display:inline-block;background:var(--haz);color:#1b1400;border:5px solid #1b1400;border-radius:14px;padding:6px 22px 10px;transform:rotate(-2deg);box-shadow:0 8px 0 #0008;position:relative}
+.sign::before,.sign::after{content:"";position:absolute;top:-34px;width:3px;height:34px;background:#d9d9d9}
+.sign::before{left:24%}.sign::after{right:24%}
+h1{font:400 clamp(44px,10vw,84px)/1 "Luckiest Guy",Impact,sans-serif;margin:0;letter-spacing:1px;color:var(--red);-webkit-text-stroke:2px #1b1400;text-shadow:3px 4px 0 #1b1400}
+.tag{font:900 clamp(13px,2.6vw,16px) Nunito,sans-serif;margin:2px 0 0}
+.lede{max-width:36em;margin:26px auto 0;font-size:clamp(16px,2.4vw,19px)}
+.lede b{color:var(--slime)}
+.shelf{position:relative;margin:34px auto 0;padding:0 2%}
+.flasks{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:clamp(6px,2vw,22px);align-items:end;position:relative;z-index:1}
+.plank{height:26px;margin-top:-6px;background:linear-gradient(var(--wood),var(--wood2));border-radius:6px;box-shadow:0 14px 18px #0007;position:relative}
+.plank::before,.plank::after{content:"";position:absolute;top:26px;width:18px;height:46px;background:var(--wood2);clip-path:polygon(0 0,100% 0,100% 100%)}
+.plank::before{left:8%}.plank::after{right:8%;transform:scaleX(-1)}
+.flask{appearance:none;background:none;border:0;padding:0;cursor:pointer;position:relative;transform-origin:50% 100%;transition:transform .2s,filter .4s,opacity .4s}
+.flask svg{width:100%;height:auto;display:block;overflow:visible}
+.flask:hover:not(:disabled){transform:translateY(-8px) rotate(-3deg)}
+.flask:focus-visible{outline:4px dashed var(--haz);outline-offset:6px;border-radius:16px}
+.flask:disabled{cursor:default}
+.flask .lbl{font:900 13px Nunito,sans-serif;fill:#1b1400}
+.flask.shake{animation:shake .12s linear infinite}
+@keyframes shake{0%{transform:rotate(-6deg) translateX(-3px)}50%{transform:rotate(6deg) translateX(3px)}100%{transform:rotate(-6deg) translateX(-3px)}}
+.flask.dud{filter:grayscale(1) brightness(.6);opacity:.45;transform:rotate(-14deg) translateY(10px)}
+.flask.boom{animation:boom .5s ease-out forwards}
+@keyframes boom{0%{transform:scale(1)}40%{transform:scale(1.25)}100%{transform:scale(.0);opacity:0}}
+.bub{animation:rise 2.4s ease-in infinite}
+@keyframes rise{0%{transform:translateY(0);opacity:0}15%{opacity:1}100%{transform:translateY(-70px);opacity:0}}
+.wobble{animation:wob 3s ease-in-out infinite}
+@keyframes wob{50%{transform:translateY(3px)}}
+.poof{position:absolute;inset:-10% -20%;display:grid;place-items:center;pointer-events:none;z-index:3}
+.poof svg{width:100%;max-width:340px;animation:pop .6s cubic-bezier(.2,1.6,.4,1) both}
+@keyframes pop{from{transform:scale(0) rotate(-30deg)}to{transform:scale(1) rotate(0)}}
+.result{margin:34px auto 0;max-width:520px;background:#fffbea;color:#1b1400;border:5px solid #1b1400;border-radius:22px;padding:22px 20px 24px;box-shadow:8px 10px 0 #0009;transform:rotate(1deg)}
+.result .small{font-weight:900;font-size:15px;text-transform:none}
+.who{font:400 clamp(48px,12vw,84px)/1 "Luckiest Guy",Impact,sans-serif;color:var(--red);margin:6px 0 8px;-webkit-text-stroke:2px #1b1400;transition:filter .3s}
+.result.hide .who{filter:blur(16px);user-select:none}
+.quip{margin:0 auto 14px;max-width:30em}
+.btn{font:900 17px Nunito,sans-serif;min-height:48px;padding:10px 26px;border:3px solid #1b1400;border-radius:999px;background:var(--slime);color:#1b1400;cursor:pointer;box-shadow:0 5px 0 #1b1400}
+.btn:active{transform:translateY(3px);box-shadow:0 2px 0 #1b1400}
+.btn:focus-visible{outline:3px solid var(--haz);outline-offset:3px}
+.warn{margin:40px auto 0;max-width:40em;font-size:14px;color:var(--soft)}
+.warn b{color:var(--haz)}
+.door{margin:34px auto 0;max-width:460px;background:#203f3b;border:4px solid #0c1c1a;border-radius:18px;padding:26px 20px}
+.door h2{font:400 30px/1.1 "Luckiest Guy",Impact,sans-serif;margin:0 0 6px;color:var(--haz)}
+.door input{width:100%;font:16px Nunito,sans-serif;min-height:48px;padding:10px 14px;border-radius:12px;border:3px solid #0c1c1a;margin:12px 0}
+.err{color:#ffb3a8;font-weight:900;min-height:1.5em;margin-top:12px}
+.confetti{position:fixed;top:-20px;width:10px;height:14px;z-index:9;pointer-events:none;animation:fallc linear forwards}
+@keyframes fallc{to{transform:translateY(110vh) rotate(720deg)}}
+@media(max-width:600px){.shelf{padding:0}.flasks{gap:4px}.plank{height:18px}}
+@media(prefers-reduced-motion:reduce){.bub,.wobble,.flask.shake,.poof svg{animation:none}.confetti{display:none}}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+  <div class="sign">
+    <h1>Flask Santa</h1>
+    <p class="tag">Dr. Santa's Laboratory of Highly Questionable Gift Science</p>
+  </div>
+
+  <!-- No key: locked door -->
+  <section id="locked" hidden>
+    <div class="door">
+      <h2>Authorised elves only</h2>
+      <p>This lab only opens with your personal secret link. Paste it (or the code at the end of it) here.</p>
+      <form id="codeForm"><input id="codeIn" autocomplete="off" placeholder="https://…#your-secret-code" aria-label="Your secret link or code"><button class="btn">Enter the lab</button></form>
+      <div class="err" id="codeErr" role="status"></div>
+    </div>
+  </section>
+
+  <!-- With key: the experiment -->
+  <section id="lab" hidden>
+    <p class="lede" id="lede"></p>
+    <div class="shelf" id="shelf">
+      <div class="flasks" id="flasks"></div>
+      <div class="plank"></div>
+      <div class="poof" id="poof" hidden></div>
+    </div>
+
+    <div class="result hide" id="result" hidden aria-live="polite">
+      <div class="small">⚗️ Experiment complete. You are the Secret Santa for…</div>
+      <div class="who" id="who"></div>
+      <p class="quip" id="quip"></p>
+      <button class="btn" id="toggle">Show name</button>
+    </div>
+  </section>
+
+  <p class="warn"><b>Lab safety rule #1:</b> results are top secret. Each person's link only opens their own flask, and nobody else's link (not even the organiser's) can see who you got. Side effects may include generosity, glitter and mild panic about budgets.</p>
+</main>
+
+<script>
+{
+const BOXES = ["XEA5KPD3TRejcwugaZt/07gP78j+XroznD0r1FldtGXkvoxRSA3UyQljO1by9BphsN6o37QqcY9/z7aTPqtwtVRC5g3pPvxI3/ueOw==","yJ70si5h2uhqJyy9lr3Q3qZUoj4kf26DQpA/tauaCUWXqD4za5z9ofrhcqWlHXHwoaAmDDj2V+TUfmPpUciBDZ1e2MGBHmgxIcjgyQ==","FYBKU4U/2hQfGRRy0Xd9zSmfF18CzWa0x4FYfiBcWzVFXpaaQCv4tQl8gNltmxR/PPc9vn6vM90kOfJ2jleoKhLp+iBX8LNxav0Zlw==","1TsTfg7/6Ia2BmeFfFSLyYH6DNDyIxSKG5cTpDQ8YKIA30WrzaSF/F0B/6a2LeRSAE7N7UrGrIV72Zv/g4K9FLDmXHs1X8ZRNr1h0Q==","Br2XNcnrCQZPV6WxnNtUXcwLcU2hOkg8KCcw7SesaHPAWiy1g5/NglvcnMATz7++UM9YiGozTtiEOJwL/imTkpGHDcCdTVK3hRx30g=="];
+const NAMES = ["Sophia","Stoyan","Ilina","Ivan","Stefcho"];
+const $ = id => document.getElementById(id);
+const unb64 = s => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
+
+const LIQ = ["#7cff4f", "#ff4fd8", "#4fd2ff", "#ffb84f"];
+const LABELS = ["ELF SWEAT", "REINDEER FUEL", "EGGNOG v0.3", "DO NOT LICK"];
+const QUIPS = [
+  "Congratulations, you are now legally responsible for {n}'s happiness.",
+  "The flask has spoken. {n} deserves better than socks. Probably.",
+  "Science says {n} would love a gift. Science is rarely wrong.",
+  "Warning: getting {n} a bad gift may cause the flask to explode for real.",
+  "{n}? Excellent choice. The flask chose, but we'll let you take credit."
+];
+
+/* Four flask characters. Each returns SVG content in a 160x240 box; `c` is the liquid colour, `i` the index. */
+const eyes = (x1, x2, y, i) => `
+  <g class="eyes">${[x1, x2].map(x => `<circle cx="${x}" cy="${y}" r="12" fill="#fff" stroke="#1b1400" stroke-width="3"/><circle class="pupil" data-cx="${x}" data-cy="${y}" cx="${x}" cy="${y}" r="5.5" fill="#1b1400"/>`).join("")}</g>`;
+const bubbles = (xs, y0) => xs.map((x, k) => `<circle class="bub" cx="${x}" cy="${y0}" r="${4 + (k % 3) * 2}" fill="#fff8" style="animation-delay:${k * 0.55}s"/>`).join("");
+const label = (x, y, w, t, rot = 0) => `<g transform="rotate(${rot} ${x + w / 2} ${y + 13})"><rect x="${x}" y="${y}" width="${w}" height="26" rx="4" fill="#fffbea" stroke="#1b1400" stroke-width="2.5"/><text class="lbl" x="${x + w / 2}" y="${y + 18}" text-anchor="middle" textLength="${w - 12}" lengthAdjust="spacingAndGlyphs">${t}</text></g>`;
+
+const SHAPES = [
+  // 0: Erlenmeyer in a Santa hat
+  (c, i) => {
+    const glass = "M62,52 H98 V110 L146,214 Q150,226 136,226 H24 Q10,226 14,214 L62,110 Z";
+    return `<defs><clipPath id="cl${i}"><path d="${glass}"/></clipPath></defs>
+    <g clip-path="url(#cl${i})"><path class="wobble" d="M0,160 Q40,150 80,160 T160,160 V240 H0 Z" fill="${c}"/>${bubbles([50, 80, 110, 66], 215)}</g>
+    <path d="${glass}" fill="#ffffff1c" stroke="#fffbea" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M70,62 V108" stroke="#fff6" stroke-width="5" stroke-linecap="round"/>
+    <path d="M52,54 Q80,-6 128,20 Q104,22 100,54 Z" fill="${"#e3262f"}" stroke="#1b1400" stroke-width="3"/>
+    <rect x="48" y="46" width="64" height="16" rx="8" fill="#fff" stroke="#1b1400" stroke-width="3"/>
+    <circle cx="130" cy="22" r="10" fill="#fff" stroke="#1b1400" stroke-width="3"/>
+    ${eyes(66, 96, 150, i)}<path d="M68,178 Q80,190 94,178" fill="none" stroke="#1b1400" stroke-width="4" stroke-linecap="round"/>
+    ${label(40, 196, 80, LABELS[0], -4)}`;
+  },
+  // 1: Round-bottom flask with a magnificent moustache
+  (c, i) => {
+    const glass = "M68,30 H92 V92 A66,66 0 1,1 68,92 Z";
+    return `<defs><clipPath id="cl${i}"><path d="${glass}"/></clipPath></defs>
+    <g clip-path="url(#cl${i})"><path class="wobble" d="M0,140 Q40,130 80,140 T160,140 V240 H0 Z" fill="${c}"/>${bubbles([48, 80, 112, 64], 210)}</g>
+    <path d="${glass}" fill="#ffffff1c" stroke="#fffbea" stroke-width="5" stroke-linejoin="round"/>
+    <rect x="62" y="18" width="36" height="18" rx="5" fill="#b07a3e" stroke="#1b1400" stroke-width="3"/>
+    <path d="M40,130 Q36,110 48,100" stroke="#fff6" stroke-width="6" fill="none" stroke-linecap="round"/>
+    ${eyes(64, 96, 136, i)}
+    <path d="M80,166 C70,156 52,158 44,172 C52,168 60,172 66,174 C72,176 78,172 80,168 C82,172 88,176 94,174 C100,172 108,168 116,172 C108,158 90,156 80,166 Z" fill="#3b2410" stroke="#1b1400" stroke-width="2"/>
+    ${label(34, 192, 92, LABELS[1], 3)}`;
+  },
+  // 2: Graduated cylinder wearing cool sunglasses
+  (c, i) => {
+    const glass = "M52,26 H108 V206 Q108,214 100,214 H60 Q52,214 52,206 Z";
+    return `<defs><clipPath id="cl${i}"><path d="${glass}"/></clipPath></defs>
+    <g clip-path="url(#cl${i})"><path class="wobble" d="M0,96 Q40,86 80,96 T160,96 V240 H0 Z" fill="${c}"/>${bubbles([66, 92, 78], 205)}</g>
+    <path d="${glass}" fill="#ffffff1c" stroke="#fffbea" stroke-width="5" stroke-linejoin="round"/>
+    ${[60, 84, 108, 132, 156, 180].map(y => `<path d="M96,${y} H106" stroke="#fffbea" stroke-width="3"/>`).join("")}
+    <path d="M30,214 H130 Q136,214 136,222 V228 H24 V222 Q24,214 30,214 Z" fill="#fffbea" stroke="#1b1400" stroke-width="3"/>
+    <g><rect x="46" y="112" width="32" height="22" rx="8" fill="#1b1400"/><rect x="82" y="112" width="32" height="22" rx="8" fill="#1b1400"/><path d="M78,120 H82" stroke="#1b1400" stroke-width="4"/>
+    <path d="M52,118 L60,114" stroke="#fff8" stroke-width="3" stroke-linecap="round"/><path d="M88,118 L96,114" stroke="#fff8" stroke-width="3" stroke-linecap="round"/></g>
+    <path d="M68,150 Q80,158 94,148" fill="none" stroke="#1b1400" stroke-width="4" stroke-linecap="round"/>
+    ${label(34, 170, 92, LABELS[2], -3)}`;
+  },
+  // 3: Suspicious potion bottle with a cork and a bow
+  (c, i) => {
+    const glass = "M66,44 H94 V82 Q140,90 140,140 V198 Q140,222 116,222 H44 Q20,222 20,198 V140 Q20,90 66,82 Z";
+    return `<defs><clipPath id="cl${i}"><path d="${glass}"/></clipPath></defs>
+    <g clip-path="url(#cl${i})"><path class="wobble" d="M0,124 Q40,114 80,124 T160,124 V240 H0 Z" fill="${c}"/>${bubbles([40, 72, 104, 124], 215)}</g>
+    <path d="${glass}" fill="#ffffff1c" stroke="#fffbea" stroke-width="5" stroke-linejoin="round"/>
+    <rect x="62" y="22" width="36" height="28" rx="6" fill="#b07a3e" stroke="#1b1400" stroke-width="3"/>
+    <path d="M80,86 L58,72 L58,100 Z M80,86 L102,72 L102,100 Z" fill="#ff4f6d" stroke="#1b1400" stroke-width="3" stroke-linejoin="round"/>
+    <circle cx="80" cy="86" r="7" fill="#ff4f6d" stroke="#1b1400" stroke-width="3"/>
+    ${eyes(62, 98, 140, i)}<ellipse cx="80" cy="170" rx="9" ry="11" fill="#1b1400"/>
+    ${label(38, 190, 84, LABELS[3], 2)}`;
+  }
+];
+
+let myKey = null, mine = null;
+
+async function tryKey(code) {
+  code = (code || "").trim();
+  if (code.includes("#")) code = code.split("#").pop();
+  let raw;
+  try { raw = unb64(code); } catch (_) { return null; }
+  if (raw.length !== 16) return null;
+  const key = await crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["decrypt"]);
+  for (const box of BOXES) {
+    try {
+      const bytes = unb64(box), iv = bytes.slice(0, 12), ct = bytes.slice(12);
+      const pt = JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ct)).trim());
+      if (NAMES.includes(pt.me) && NAMES.includes(pt.target)) return pt;
+    } catch (_) {}
+  }
+  return null;
+}
+
+function buildShelf() {
+  $("flasks").innerHTML = SHAPES.map((f, i) =>
+    `<button class="flask" data-i="${i}" aria-label="Flask ${i + 1}: ${LABELS[i]}"><svg viewBox="0 0 160 240" aria-hidden="true">${f(LIQ[i], i)}</svg></button>`).join("");
+}
+
+function confetti() {
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const cols = ["#e3262f", "#7cff4f", "#ffd23f", "#4fd2ff", "#ff4fd8", "#fffbea"];
+  for (let k = 0; k < 90; k++) {
+    const d = document.createElement("div");
+    d.className = "confetti";
+    d.style.left = Math.random() * 100 + "vw";
+    d.style.background = cols[k % cols.length];
+    d.style.animationDuration = 1.8 + Math.random() * 2 + "s";
+    d.style.animationDelay = Math.random() * 0.4 + "s";
+    d.style.borderRadius = k % 3 ? "2px" : "50%";
+    document.body.appendChild(d);
+    setTimeout(() => d.remove(), 4600);
+  }
+}
+
+function showResult(animate) {
+  $("who").textContent = mine.target;
+  const q = QUIPS[(mine.target.length + mine.me.length) % QUIPS.length];
+  $("quip").textContent = q.replace("{n}", mine.target);
+  $("result").hidden = false;
+  $("result").classList.toggle("hide", !animate);
+  $("toggle").textContent = animate ? "Hide name" : "Show name";
+  if (animate) $("result").scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+async function pick(btn) {
+  const all = [...document.querySelectorAll(".flask")];
+  all.forEach(b => b.disabled = true);
+  $("lede").textContent = "Shaking vigorously… stand back…";
+  btn.classList.add("shake");
+  await new Promise(r => setTimeout(r, 1300));
+  btn.classList.remove("shake");
+  all.forEach(b => { if (b !== btn) b.classList.add("dud"); });
+  btn.classList.add("boom");
+  const poof = $("poof");
+  poof.hidden = false;
+  poof.innerHTML = `<svg viewBox="0 0 300 200" aria-hidden="true">
+    <path d="M150,8 L170,58 L224,24 L206,78 L282,70 L226,112 L290,150 L214,148 L234,196 L172,160 L150,198 L128,160 L66,196 L86,148 L10,150 L74,112 L18,70 L94,78 L76,24 L130,58 Z" fill="#ffd23f" stroke="#1b1400" stroke-width="6" stroke-linejoin="round"/>
+    <text x="150" y="122" text-anchor="middle" font-family="'Luckiest Guy',Impact,sans-serif" font-size="58" fill="#e3262f" stroke="#1b1400" stroke-width="2.5">POOF!</text></svg>`;
+  confetti();
+  try { localStorage.setItem("flaskSanta:" + myKey, String(btn.dataset.i)); } catch (_) {}
+  await new Promise(r => setTimeout(r, 900));
+  poof.hidden = true;
+  $("lede").innerHTML = "";
+  $("lede").append("The experiment worked, ", Object.assign(document.createElement("b"), { textContent: mine.me }), "! Nobody else will ever know. Probably.");
+  showResult(true);
+}
+
+function lookAt(x, y) {
+  for (const p of document.querySelectorAll(".pupil")) {
+    const svg = p.ownerSVGElement, r = svg.getBoundingClientRect(), s = r.width / 160;
+    const cx = r.left + p.dataset.cx * s, cy = r.top + p.dataset.cy * s;
+    const a = Math.atan2(y - cy, x - cx), d = Math.min(5, Math.hypot(x - cx, y - cy) / 30);
+    p.setAttribute("cx", +p.dataset.cx + Math.cos(a) * d);
+    p.setAttribute("cy", +p.dataset.cy + Math.sin(a) * d);
+  }
+}
+
+async function enter(code) {
+  const res = await tryKey(code);
+  if (!res) return false;
+  mine = res; myKey = (code.includes("#") ? code.split("#").pop() : code).trim();
+  if (location.hash.slice(1) !== myKey) history.replaceState(null, "", "#" + myKey);
+  $("locked").hidden = true; $("lab").hidden = false;
+  buildShelf();
+  let done = null; try { done = localStorage.getItem("flaskSanta:" + myKey); } catch (_) {}
+  if (done !== null) {
+    document.querySelectorAll(".flask").forEach(b => { b.disabled = true; if (b.dataset.i !== done) b.classList.add("dud"); });
+    $("lede").innerHTML = "";
+    $("lede").append("Welcome back, ", Object.assign(document.createElement("b"), { textContent: mine.me }), ". Your experiment results are below.");
+    showResult(false);
+  } else {
+    $("lede").innerHTML = "";
+    $("lede").append("Welcome to the lab, ", Object.assign(document.createElement("b"), { textContent: mine.me }),
+      ". Inside one of these flasks is the person you're buying a present for. Pick one. Choose wisely. (They're all equally unstable.)");
+  }
+  return true;
+}
+
+$("flasks").addEventListener("click", e => { const b = e.target.closest(".flask"); if (b && !b.disabled) pick(b); });
+$("toggle").addEventListener("click", () => { const h = $("result").classList.toggle("hide"); $("toggle").textContent = h ? "Show name" : "Hide name"; });
+addEventListener("pointermove", e => lookAt(e.clientX, e.clientY), { passive: true });
+$("codeForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  $("codeErr").textContent = "";
+  if (!(await enter($("codeIn").value))) $("codeErr").textContent = "That code melted in the beaker. Check your link and try again.";
+});
+
+(async () => {
+  const h = location.hash.slice(1);
+  if (!h || !(await enter(h))) {
+    $("locked").hidden = false;
+    if (h) $("codeErr").textContent = "That link didn't open any flask. Check you copied all of it.";
+  }
+})();
+}
+</script>
+</body>
+</html>
