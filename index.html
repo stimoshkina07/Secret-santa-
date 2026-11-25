@@ -66,10 +66,20 @@ h1{font:400 clamp(44px,10vw,84px)/1 "Luckiest Guy",Impact,sans-serif;margin:0;le
 .door h2{font:400 30px/1.1 "Luckiest Guy",Impact,sans-serif;margin:0 0 6px;color:var(--haz)}
 .names{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:14px}.names .btn{min-width:120px}.back{background:transparent;color:var(--ink);border-color:#ffffff55;box-shadow:none;font-size:15px;min-height:44px;margin-top:22px}
 .err{color:#ffb3a8;font-weight:900;min-height:1.5em;margin-top:12px}
+.spark{position:fixed;z-index:10;pointer-events:none;width:var(--s);height:var(--s);background:var(--c);clip-path:polygon(50% 0,61% 39%,100% 50%,61% 61%,50% 100%,39% 61%,0 50%,39% 39%);animation:burst var(--d) cubic-bezier(.08,.75,.25,1) var(--delay) both}
+.spark.dot{clip-path:circle(50%)}
+@keyframes burst{0%{transform:translate(-50%,-50%) scale(0) rotate(0);opacity:1}15%{transform:translate(calc(-50% + var(--x)*.35),calc(-50% + var(--y)*.35)) scale(1.4) rotate(calc(var(--r)*.3));opacity:1}100%{transform:translate(calc(-50% + var(--x)),calc(-50% + var(--y) + 60px)) scale(0) rotate(var(--r));opacity:0}}
+.ring{position:fixed;z-index:9;pointer-events:none;width:60px;height:60px;margin:-30px 0 0 -30px;border-radius:50%;border:8px solid var(--c);animation:ring .8s ease-out var(--delay) both}
+@keyframes ring{from{transform:scale(.2);opacity:1}to{transform:scale(7);opacity:0;border-width:1px}}
+.flash{position:fixed;inset:0;z-index:8;pointer-events:none;background:radial-gradient(circle at var(--fx) var(--fy),#fffbeaee,#fffbea00 45%);animation:flash .6s ease-out forwards}
+@keyframes flash{from{opacity:1}to{opacity:0}}
+.flask.shake svg{animation:glow .3s ease-in-out infinite alternate}
+@keyframes glow{from{filter:drop-shadow(0 0 6px #ffd23f)}to{filter:drop-shadow(0 0 26px #7cff4f) brightness(1.2)}}
+.flask.shake .bub{animation-duration:.5s}
 .confetti{position:fixed;top:-20px;width:10px;height:14px;z-index:9;pointer-events:none;animation:fallc linear forwards}
 @keyframes fallc{to{transform:translateY(110vh) rotate(720deg)}}
 @media(max-width:600px){.shelf{padding:0}.flasks{gap:4px}.plank{height:18px}}
-@media(prefers-reduced-motion:reduce){.bub,.wobble,.flask.shake,.poof svg{animation:none}.confetti{display:none}}
+@media(prefers-reduced-motion:reduce){.bub,.wobble,.flask.shake,.flask.shake svg,.poof svg{animation:none}.confetti,.spark,.ring,.flash{display:none}}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -112,8 +122,8 @@ h1{font:400 clamp(44px,10vw,84px)/1 "Luckiest Guy",Impact,sans-serif;margin:0;le
 
 <script>
 {
-const BOXES = {"Sophia":"NRgEFQhFHA==","Stoyan":"MAkPGgdEHQA=","Ilina":"NRgOCgpD","Ivan":"LwAIHQo=","Stefcho":"LxoAHQ==","Venilina":"NQMRGwJM"};  // obfuscated so nobody spots a name by glancing at the code
-const NAMES = ["Sophia","Stoyan","Ilina","Ivan","Stefcho","Venilina"];
+const BOXES = {"Sophia":"NRgOCgpD","Stoyan":"LwAIHQo=","Ilina":"NQMRGwJM","Ivan":"NRgEFQhFHA==","Stefcho":"LxoAHQ=="};  // obfuscated so nobody spots a name by glancing at the code
+const NAMES = ["Sophia","Stoyan","Ilina","Ivan","Stefcho"];
 const $ = id => document.getElementById(id);
 const unb64 = s => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
 
@@ -216,6 +226,37 @@ function confetti() {
   }
 }
 
+
+const SPARK_COLS = ["#ffd23f", "#7cff4f", "#ff4fd8", "#4fd2ff", "#fffbea", "#e3262f", "#ffb84f"];
+function spawn(cls, styles, life) {
+  const d = document.createElement("div");
+  d.className = cls;
+  for (const k in styles) d.style.setProperty(k, styles[k]);
+  document.body.appendChild(d);
+  setTimeout(() => d.remove(), life);
+}
+/* A big burst of stars, glitter and shockwave rings from point (x, y). */
+function sparkles(x, y, big) {
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const n = big ? 140 : 10;
+  for (let k = 0; k < n; k++) {
+    const a = Math.random() * Math.PI * 2, dist = (big ? 120 : 30) + Math.random() * (big ? 320 : 50);
+    spawn("spark" + (k % 4 === 0 ? " dot" : ""), {
+      left: x + "px", top: y + "px",
+      "--x": Math.cos(a) * dist + "px", "--y": Math.sin(a) * dist + "px",
+      "--r": (Math.random() * 720 - 360) + "deg",
+      "--s": (big ? 10 + Math.random() * 18 : 6 + Math.random() * 8) + "px",
+      "--c": SPARK_COLS[k % SPARK_COLS.length],
+      "--d": (big ? 0.9 + Math.random() * 0.9 : 0.6 + Math.random() * 0.4) + "s",
+      "--delay": (big ? (k % 3) * 0.12 : 0) + "s"
+    }, 2400);
+  }
+  if (big) {
+    ["#ffd23f", "#7cff4f", "#ff4fd8"].forEach((c, i) => spawn("ring", { left: x + "px", top: y + "px", "--c": c, "--delay": i * 0.15 + "s" }, 1400));
+    spawn("flash", { "--fx": x + "px", "--fy": y + "px" }, 700);
+  }
+}
+
 function showResult(animate) {
   $("who").textContent = mine.target;
   const q = QUIPS[(mine.target.length + mine.me.length) % QUIPS.length];
@@ -233,6 +274,8 @@ async function pick(btn) {
   btn.classList.add("shake");
   await new Promise(r => setTimeout(r, 1300));
   btn.classList.remove("shake");
+  const r = btn.getBoundingClientRect();
+  sparkles(r.left + r.width / 2, r.top + r.height * 0.55, true);
   all.forEach(b => { if (b !== btn) b.classList.add("dud"); });
   btn.classList.add("boom");
   const poof = $("poof");
@@ -241,12 +284,12 @@ async function pick(btn) {
     <path d="M150,8 L170,58 L224,24 L206,78 L282,70 L226,112 L290,150 L214,148 L234,196 L172,160 L150,198 L128,160 L66,196 L86,148 L10,150 L74,112 L18,70 L94,78 L76,24 L130,58 Z" fill="#ffd23f" stroke="#1b1400" stroke-width="6" stroke-linejoin="round"/>
     <text x="150" y="122" text-anchor="middle" font-family="'Luckiest Guy',Impact,sans-serif" font-size="58" fill="#e3262f" stroke="#1b1400" stroke-width="2.5">POOF!</text></svg>`;
   confetti();
-  try { localStorage.setItem("flaskSanta2:" + myKey, String(btn.dataset.i)); } catch (_) {}
   await new Promise(r => setTimeout(r, 900));
   poof.hidden = true;
   $("lede").innerHTML = "";
   $("lede").append("The experiment worked, ", Object.assign(document.createElement("b"), { textContent: mine.me }), "! Nobody else will ever know. Probably.");
   showResult(true);
+  setTimeout(() => { const w = $("who").getBoundingClientRect(); sparkles(w.left + w.width / 2, w.top + w.height / 2, true); }, 650);
 }
 
 function lookAt(x, y) {
@@ -265,16 +308,9 @@ function enter(name) {
   mine = { me: name, target }; myKey = name;
   $("locked").hidden = true; $("lab").hidden = false; $("result").hidden = true;
   buildShelf();
-  let done = null; try { done = localStorage.getItem("flaskSanta2:" + myKey); } catch (_) {}
   $("lede").innerHTML = "";
-  if (done !== null) {
-    document.querySelectorAll(".flask").forEach(b => { b.disabled = true; if (b.dataset.i !== done) b.classList.add("dud"); });
-    $("lede").append("Welcome back, ", Object.assign(document.createElement("b"), { textContent: name }), ". Your experiment results are below.");
-    showResult(false);
-  } else {
-    $("lede").append("Welcome to the lab, ", Object.assign(document.createElement("b"), { textContent: name }),
-      ". Inside one of these flasks is the person you're buying a present for. Pick one. Choose wisely. (They're all equally unstable.)");
-  }
+  $("lede").append("Welcome to the lab, ", Object.assign(document.createElement("b"), { textContent: name }),
+    ". Inside one of these flasks is the person you're buying a present for. Pick one. Choose wisely. (They're all equally unstable.)");
   scrollTo({ top: 0 });
 }
 
@@ -282,6 +318,7 @@ $("names").innerHTML = NAMES.map(n => `<button class="btn" data-n="${n}">${n}</b
 $("names").addEventListener("click", e => { const b = e.target.closest("button"); if (b) enter(b.dataset.n); });
 $("back").addEventListener("click", () => { $("lab").hidden = true; $("locked").hidden = false; mine = null; scrollTo({ top: 0 }); });
 $("flasks").addEventListener("click", e => { const b = e.target.closest(".flask"); if (b && !b.disabled) pick(b); });
+$("flasks").addEventListener("pointerover", e => { const b = e.target.closest(".flask"); if (!b || b.disabled || b.contains(e.relatedTarget)) return; const r = b.getBoundingClientRect(); sparkles(r.left + r.width / 2, r.top + r.height * 0.4, false); });
 $("toggle").addEventListener("click", () => { const h = $("result").classList.toggle("hide"); $("toggle").textContent = h ? "Show name" : "Hide name"; });
 addEventListener("pointermove", e => lookAt(e.clientX, e.clientY), { passive: true });
 }
